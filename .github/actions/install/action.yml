@@ -42,6 +42,11 @@ runs:
         sudo apt-get update
         sudo apt-get install -y wget xz-utils ca-certificates clang make git cmake ninja-build autoconf automake libtool
 
+    - name: Install brew deps
+      if: ${{ inputs.os == 'macos' }}
+      shell: bash
+      run: brew install cmake ninja autoconf automake libtool
+
     # Zig version used from the `minimum_zig_version` field in build.zig.zon
     - uses: mlugg/setup-zig@v2
 
