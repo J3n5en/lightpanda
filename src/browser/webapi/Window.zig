@@ -44,6 +44,7 @@ const Element = @import("Element.zig");
 const CSSStyleProperties = @import("css/CSSStyleProperties.zig");
 const CustomElementRegistry = @import("CustomElementRegistry.zig");
 const Selection = @import("Selection.zig");
+const SpeechSynthesis = @import("SpeechSynthesis.zig");
 
 const IS_DEBUG = builtin.mode == .Debug;
 
@@ -62,6 +63,7 @@ _screen: *Screen,
 _visual_viewport: *VisualViewport,
 _performance: Performance,
 _storage_bucket: storage.Bucket = .{},
+_speech_synthesis: SpeechSynthesis = .{},
 _on_load: ?js.Function.Global = null,
 _on_pageshow: ?js.Function.Global = null,
 _on_popstate: ?js.Function.Global = null,
@@ -157,6 +159,10 @@ pub fn getLocalStorage(self: *Window) *storage.Lookup {
 
 pub fn getSessionStorage(self: *Window) *storage.Lookup {
     return &self._storage_bucket.session;
+}
+
+pub fn getSpeechSynthesis(self: *Window) *SpeechSynthesis {
+    return &self._speech_synthesis;
 }
 
 pub fn getLocation(self: *const Window) *Location {
@@ -867,6 +873,7 @@ pub const JsApi = struct {
     // (webcam, geolocation, clipboard, etc.)
     // This is safer and could help avoid processing errors by hinting at
     // sites not to try to access those features
+    pub const speechSynthesis = bridge.accessor(Window.getSpeechSynthesis, null, .{});
     pub const isSecureContext = bridge.property(false, .{ .template = false });
 
     pub const innerWidth = bridge.property(1920, .{ .template = false });

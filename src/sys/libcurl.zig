@@ -520,7 +520,9 @@ pub fn curl_easy_cleanup(easy: *Curl) void {
 }
 
 pub fn curl_easy_impersonate(easy: *Curl, target: [*:0]const u8, default_headers: c_int) Error!void {
-    try errorCheck(c.curl_easy_impersonate(easy, target, default_headers));
+    if (comptime @hasDecl(c, "curl_easy_impersonate")) {
+        try errorCheck(c.curl_easy_impersonate(easy, target, default_headers));
+    }
 }
 
 pub fn curl_easy_perform(easy: *Curl) Error!void {

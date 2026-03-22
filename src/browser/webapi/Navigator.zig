@@ -25,12 +25,16 @@ const js = @import("../js/js.zig");
 const Page = @import("../Page.zig");
 
 const PluginArray = @import("PluginArray.zig");
+const MimeTypeArray = @import("MimeTypeArray.zig");
 const Permissions = @import("Permissions.zig");
 const StorageManager = @import("StorageManager.zig");
+const NetworkInformation = @import("NetworkInformation.zig");
 
 const Navigator = @This();
 _pad: bool = false,
 _plugins: PluginArray = .{},
+_mime_types: MimeTypeArray = .{},
+_connection: NetworkInformation = .{},
 _permissions: Permissions = .{},
 _storage: StorageManager = .{},
 
@@ -61,6 +65,14 @@ pub fn javaEnabled(_: *const Navigator) bool {
 
 pub fn getPlugins(self: *Navigator) *PluginArray {
     return &self._plugins;
+}
+
+pub fn getMimeTypes(self: *Navigator) *MimeTypeArray {
+    return &self._mime_types;
+}
+
+pub fn getConnection(self: *Navigator) *NetworkInformation {
+    return &self._connection;
 }
 
 pub fn getPermissions(self: *Navigator) *Permissions {
@@ -171,6 +183,8 @@ pub const JsApi = struct {
     pub const product = bridge.property("Gecko", .{ .template = false });
     pub const webdriver = bridge.property(false, .{ .template = false });
     pub const plugins = bridge.accessor(Navigator.getPlugins, null, .{});
+    pub const mimeTypes = bridge.accessor(Navigator.getMimeTypes, null, .{});
+    pub const connection = bridge.accessor(Navigator.getConnection, null, .{});
     pub const doNotTrack = bridge.property(null, .{ .template = false });
     pub const globalPrivacyControl = bridge.property(true, .{ .template = false });
     pub const registerProtocolHandler = bridge.function(Navigator.registerProtocolHandler, .{ .dom_exception = true });
