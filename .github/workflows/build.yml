@@ -23,6 +23,9 @@ jobs:
           - os: macos-14
             arch: aarch64
             target_os: macos
+          - os: macos-14-large
+            arch: x86_64
+            target_os: macos
 
     name: ${{ matrix.target_os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
