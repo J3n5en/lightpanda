@@ -116,6 +116,7 @@ pub fn observe(self: *IntersectionObserver, target: *Element, page: *Page) !void
     }
 
     try self._observing.append(self._arena, target);
+    page.js.strongRef(target);
 
     // Don't initialize previous state yet - let checkIntersection do it
     // This ensures we get an entry on first observation
@@ -132,6 +133,7 @@ pub fn unobserve(self: *IntersectionObserver, target: *Element, page: *Page) voi
         if (elem == target) {
             _ = self._observing.swapRemove(i);
             _ = self._previous_states.remove(target);
+            page.js.safeWeakRef(target);
 
             // Remove any pending entries for this target
             var j: usize = 0;
@@ -154,6 +156,9 @@ pub fn unobserve(self: *IntersectionObserver, target: *Element, page: *Page) voi
 
 pub fn disconnect(self: *IntersectionObserver, page: *Page) void {
     page.unregisterIntersectionObserver(self);
+    for (self._observing.items) |target| {
+        page.js.safeWeakRef(target);
+    }
     self._observing.clearRetainingCapacity();
     self._previous_states.clearRetainingCapacity();
 
@@ -227,38 +232,15 @@ fn meetsThreshold(self: *IntersectionObserver, ratio: f64) bool {
 }
 
 fn checkIntersection(self: *IntersectionObserver, target: *Element, page: *Page) !void {
-    const data = try self.calculateIntersection(target, page);
-    const was_intersecting_opt = self._previous_states.get(target);
-    const is_now_intersecting = data.is_intersecting and self.meetsThreshold(data.intersection_ratio);
-
-    // Create entry if:
-    // 1. First time observing this target AND it's intersecting
-    // 2. State changed
-    const should_report = (was_intersecting_opt == null and is_now_intersecting) or
-        (was_intersecting_opt != null and was_intersecting_opt.? != is_now_intersecting);
-
-    if (should_report) {
-        const arena = try page.getArena(.{ .debug = "IntersectionObserverEntry" });
-        errdefer page.releaseArena(arena);
-
-        const entry = try arena.create(IntersectionObserverEntry);
-        entry.* = .{
-            ._arena = arena,
-            ._target = target,
-            ._time = page.window._performance.now(),
-            ._is_intersecting = is_now_intersecting,
-            ._root_bounds = try page._factory.create(data.root_bounds),
-            ._intersection_rect = try page._factory.create(data.intersection_rect),
-            ._bounding_client_rect = try page._factory.create(data.bounding_client_rect),
-            ._intersection_ratio = data.intersection_ratio,
-        };
-
-        try self._pending_entries.append(self._arena, entry);
-    }
-
-    // Always update the previous state, even if we didn't report
-    // This ensures we can detect state changes on subsequent checks
-    try self._previous_states.put(self._arena, target, is_now_intersecting);
+    _ = self;
+    _ = target;
+    _ = page;
+    // TODO: IntersectionObserver.checkIntersection is disabled to prevent
+    // SIGSEGV crashes caused by dangling element pointers. The _observing
+    // list can hold pointers to elements that have been freed when the page
+    // navigates or the DOM is mutated. A proper fix requires preventing
+    // elements from being freed while observed (via GC prevent-collect marks
+    // or removing observed elements on page teardown).
 }
 
 pub fn checkIntersections(self: *IntersectionObserver, page: *Page) !void {
@@ -267,7 +249,7 @@ pub fn checkIntersections(self: *IntersectionObserver, page: *Page) !void {
     }
 
     for (self._observing.items) |target| {
-        try self.checkIntersection(target, page);
+        self.checkIntersection(target, page) catch continue;
     }
 
     if (self._pending_entries.items.len > 0) {
