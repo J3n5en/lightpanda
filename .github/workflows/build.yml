@@ -1,0 +1,40 @@
+name: build
+
+on:
+  workflow_dispatch:
+
+env:
+  LIGHTPANDA_DISABLE_TELEMETRY: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/checkout@v6
+        with:
+          repository: 'lexiforest/curl-impersonate'
+          path: curl-impersonate
+
+      - uses: ./.github/actions/install
+        with:
+          curl-impersonate: curl-impersonate
+
+      - name: v8 snapshot
+        run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate snapshot_creator -- src/snapshot.bin
+
+      - name: build
+        run: zig build -Dsnapshot_path=../../snapshot.bin -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate -Dcpu=x86_64 -Dgit_commit=$(git rev-parse --short ${{ github.sha }})
+
+      - name: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: lightpanda
+          path: zig-out/bin/lightpanda
+          retention-days: 7
