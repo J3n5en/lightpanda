@@ -84,12 +84,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/checkout@v6
+        with:
+          repository: 'lexiforest/curl-impersonate'
+          path: curl-impersonate
+
       - uses: ./.github/actions/install
         with:
           debug: true
+          curl-impersonate: curl-impersonate
 
       - name: zig build test
-        run: zig build -Dprebuilt_v8_path=v8/libc_v8_debug.a -Dtsan=true test
+        run: zig build -Dprebuilt_v8_path=v8/libc_v8_debug.a -Dtsan=true -Dcurl_impersonate_path=.curl-impersonate test
 
   zig-test-release:
     name: zig test
@@ -104,10 +110,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/checkout@v6
+        with:
+          repository: 'lexiforest/curl-impersonate'
+          path: curl-impersonate
+
       - uses: ./.github/actions/install
+        with:
+          curl-impersonate: curl-impersonate
 
       - name: zig build test
-        run: METRICS=true zig build -Dprebuilt_v8_path=v8/libc_v8.a test > bench.json
+        run: METRICS=true zig build -Dprebuilt_v8_path=v8/libc_v8.a -Dcurl_impersonate_path=.curl-impersonate test > bench.json
 
       - name: write commit
         run: |

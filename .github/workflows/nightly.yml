@@ -36,16 +36,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/checkout@v6
+        with:
+          repository: 'lexiforest/curl-impersonate'
+          path: curl-impersonate
+
       - uses: ./.github/actions/install
         with:
           os: ${{env.OS}}
           arch: ${{env.ARCH}}
+          curl-impersonate: curl-impersonate
 
       - name: v8 snapshot
-        run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast snapshot_creator -- src/snapshot.bin
+        run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate snapshot_creator -- src/snapshot.bin
 
       - name: zig build
-        run: zig build -Dsnapshot_path=../../snapshot.bin -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcpu=x86_64 -Dgit_commit=$(git rev-parse --short ${{ github.sha }}) ${{ env.GIT_VERSION_FLAG }}
+        run: zig build -Dsnapshot_path=../../snapshot.bin -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate -Dcpu=x86_64 -Dgit_commit=$(git rev-parse --short ${{ github.sha }}) ${{ env.GIT_VERSION_FLAG }}
 
       - name: Rename binary
         run: mv zig-out/bin/lightpanda lightpanda-${{ env.ARCH }}-${{ env.OS }}
@@ -76,16 +82,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/checkout@v6
+        with:
+          repository: 'lexiforest/curl-impersonate'
+          path: curl-impersonate
+
       - uses: ./.github/actions/install
         with:
           os: ${{env.OS}}
           arch: ${{env.ARCH}}
+          curl-impersonate: curl-impersonate
 
       - name: v8 snapshot
-        run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast snapshot_creator -- src/snapshot.bin
+        run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate snapshot_creator -- src/snapshot.bin
 
       - name: zig build
-        run: zig build -Dsnapshot_path=../../snapshot.bin -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcpu=generic -Dgit_commit=$(git rev-parse --short ${{ github.sha }}) ${{ env.GIT_VERSION_FLAG }}
+        run: zig build -Dsnapshot_path=../../snapshot.bin -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate -Dcpu=generic -Dgit_commit=$(git rev-parse --short ${{ github.sha }}) ${{ env.GIT_VERSION_FLAG }}
 
       - name: Rename binary
         run: mv zig-out/bin/lightpanda lightpanda-${{ env.ARCH }}-${{ env.OS }}
@@ -118,16 +130,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/checkout@v6
+        with:
+          repository: 'lexiforest/curl-impersonate'
+          path: curl-impersonate
+
       - uses: ./.github/actions/install
         with:
           os: ${{env.OS}}
           arch: ${{env.ARCH}}
+          curl-impersonate: curl-impersonate
 
       - name: v8 snapshot
-        run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast snapshot_creator -- src/snapshot.bin
+        run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate snapshot_creator -- src/snapshot.bin
 
       - name: zig build
-        run: zig build -Dsnapshot_path=../../snapshot.bin -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dgit_commit=$(git rev-parse --short ${{ github.sha }}) ${{ env.GIT_VERSION_FLAG }}
+        run: zig build -Dsnapshot_path=../../snapshot.bin -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate -Dgit_commit=$(git rev-parse --short ${{ github.sha }}) ${{ env.GIT_VERSION_FLAG }}
 
       - name: Rename binary
         run: mv zig-out/bin/lightpanda lightpanda-${{ env.ARCH }}-${{ env.OS }}
@@ -158,16 +176,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/checkout@v6
+        with:
+          repository: 'lexiforest/curl-impersonate'
+          path: curl-impersonate
+
       - uses: ./.github/actions/install
         with:
           os: ${{env.OS}}
           arch: ${{env.ARCH}}
+          curl-impersonate: curl-impersonate
 
       - name: v8 snapshot
-        run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast snapshot_creator -- src/snapshot.bin
+        run: zig build -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate snapshot_creator -- src/snapshot.bin
 
       - name: zig build
-        run: zig build -Dsnapshot_path=../../snapshot.bin -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dgit_commit=$(git rev-parse --short ${{ github.sha }}) ${{ env.GIT_VERSION_FLAG }}
+        run: zig build -Dsnapshot_path=../../snapshot.bin -Dprebuilt_v8_path=v8/libc_v8.a -Doptimize=ReleaseFast -Dcurl_impersonate_path=.curl-impersonate -Dgit_commit=$(git rev-parse --short ${{ github.sha }}) ${{ env.GIT_VERSION_FLAG }}
 
       - name: Rename binary
         run: mv zig-out/bin/lightpanda lightpanda-${{ env.ARCH }}-${{ env.OS }}
