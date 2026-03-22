@@ -156,6 +156,13 @@ pub fn userAgentSuffix(self: *const Config) ?[]const u8 {
     };
 }
 
+pub fn impersonate(self: *const Config) ?[:0]const u8 {
+    return switch (self.mode) {
+        inline .serve, .fetch, .mcp => |opts| opts.common.impersonate,
+        .help, .version => null,
+    };
+}
+
 pub fn cdpTimeout(self: *const Config) usize {
     return switch (self.mode) {
         .serve => |opts| if (opts.timeout > 604_800) 604_800_000 else @as(usize, opts.timeout) * 1000,
@@ -249,6 +256,7 @@ pub const Common = struct {
     log_format: ?log.Format = null,
     log_filter_scopes: ?[]log.Scope = null,
     user_agent_suffix: ?[]const u8 = null,
+    impersonate: ?[:0]const u8 = null,
 
     web_bot_auth_key_file: ?[]const u8 = null,
     web_bot_auth_keyid: ?[]const u8 = null,
@@ -359,6 +367,11 @@ pub fn printUsageAndExit(self: *const Config, success: bool) void {
         \\
         \\--user_agent_suffix
         \\                Suffix to append to the Lightpanda/X.Y User-Agent
+        \\
+        \\--impersonate
+        \\                Impersonate a browser's TLS/HTTP2 fingerprint.
+        \\                Requires curl-impersonate build.
+        \\                e.g. chrome145, chrome131, chrome116
         \\
         \\--web_bot_auth_key_file
         \\                Path to the Ed25519 private key PEM file.
@@ -921,6 +934,15 @@ fn parseCommonArg(
             }
         }
         common.user_agent_suffix = try allocator.dupe(u8, str);
+        return true;
+    }
+
+    if (std.mem.eql(u8, "--impersonate", opt)) {
+        const str = args.next() orelse {
+            log.fatal(.app, "missing argument value", .{ .arg = "--impersonate" });
+            return error.InvalidArgument;
+        };
+        common.impersonate = try allocator.dupeZ(u8, str);
         return true;
     }
 

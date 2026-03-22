@@ -66,12 +66,15 @@ pub const Headers = struct {
     headers: ?*libcurl.CurlSList,
     cookies: ?[*c]const u8,
 
-    pub fn init(user_agent: [:0]const u8) !Headers {
-        const header_list = libcurl.curl_slist_append(null, user_agent);
-        if (header_list == null) {
-            return error.OutOfMemory;
+    pub fn init(user_agent: ?[:0]const u8) !Headers {
+        if (user_agent) |ua| {
+            const header_list = libcurl.curl_slist_append(null, ua);
+            if (header_list == null) {
+                return error.OutOfMemory;
+            }
+            return .{ .headers = header_list, .cookies = null };
         }
-        return .{ .headers = header_list, .cookies = null };
+        return .{ .headers = null, .cookies = null };
     }
 
     pub fn deinit(self: *const Headers) void {
@@ -284,6 +287,14 @@ pub const Connection = struct {
         // empty string means: use whatever's available
         try libcurl.curl_easy_setopt(easy, .accept_encoding, "");
 
+        // Browser impersonation: set TLS/HTTP2 fingerprint to match a real browser.
+        // This avoids bot detection that rejects non-browser fingerprints.
+        if (config.impersonate()) |target| {
+            libcurl.curl_easy_impersonate(easy, target, 1) catch |err| {
+                log.err(.http, "impersonate failed", .{ .err = err });
+            };
+        }
+
         // debug
         if (comptime ENABLE_DEBUG) {
             try libcurl.curl_easy_setopt(easy, .verbose, true);
@@ -374,6 +385,10 @@ pub const Connection = struct {
         try libcurl.curl_easy_setopt(self.easy, .user_pwd, creds.ptr);
     }
 
+    pub fn setHttpVersion(self: *const Connection, version: c_long) !void {
+        try libcurl.curl_easy_setopt(self.easy, .http_version, version);
+    }
+
     pub fn setCallbacks(
         self: *const Connection,
         comptime header_cb: libcurl.CurlHeaderFunction,
@@ -386,6 +401,7 @@ pub const Connection = struct {
     }
 
     pub fn reset(self: *const Connection) !void {
+        try libcurl.curl_easy_setopt(self.easy, .http_version, 0); // CURL_HTTP_VERSION_NONE
         try libcurl.curl_easy_setopt(self.easy, .proxy, null);
         try libcurl.curl_easy_setopt(self.easy, .http_header, null);
 

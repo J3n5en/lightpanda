@@ -179,7 +179,13 @@ pub fn deinit(self: *Client) void {
 }
 
 pub fn newHeaders(self: *const Client) !Net.Headers {
-    return Net.Headers.init(self.network.config.http_headers.user_agent_header);
+    // When impersonating a browser, skip our User-Agent header
+    // so the impersonate default headers (including its UA) take effect.
+    const ua: ?[:0]const u8 = if (self.network.config.impersonate() != null)
+        null
+    else
+        self.network.config.http_headers.user_agent_header;
+    return Net.Headers.init(ua);
 }
 
 pub fn abort(self: *Client) void {
@@ -693,6 +699,11 @@ fn makeRequest(self: *Client, conn: *Net.Connection, transfer: *Transfer) anyerr
         try conn.setProxy(self.http_proxy);
         try conn.setTlsVerify(self.tls_verify, self.use_proxy);
 
+        // HTTP/2 fallback: force HTTP/1.1 on retry
+        if (transfer._http2_fallback) {
+            try conn.setHttpVersion(2); // CURL_HTTP_VERSION_1_1
+        }
+
         try conn.setURL(req.url);
         try conn.setMethod(req.method);
         if (req.body) |b| {
@@ -844,6 +855,19 @@ fn processMessages(self: *Client) !bool {
                     // aborted, already cleaned up
                 }
 
+                continue;
+            }
+        }
+
+        // HTTP/2 stream error: retry with HTTP/1.1 fallback
+        if (msg.err) |err| {
+            if ((err == error.Http2Stream or err == error.Http2) and !transfer._http2_fallback) {
+                log.debug(.http, "http2 fallback retry", .{});
+                transfer._http2_fallback = true;
+                transfer._header_done_called = false;
+                transfer.reset();
+                self.endTransfer(transfer);
+                self.queue.append(&transfer._node);
                 continue;
             }
         }
@@ -1024,6 +1048,7 @@ pub const Transfer = struct {
     // incremented by reset func.
     _tries: u8 = 0,
     _performing: bool = false,
+    _http2_fallback: bool = false,
 
     // for when a Transfer is queued in the client.queue
     _node: std.DoublyLinkedList.Node = .{},

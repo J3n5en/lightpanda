@@ -30,6 +30,7 @@ pub fn build(b: *Build) !void {
     const git_version = b.option([]const u8, "git_version", "Current git version (from tag)");
     const prebuilt_v8_path = b.option([]const u8, "prebuilt_v8_path", "Path to prebuilt libc_v8.a");
     const snapshot_path = b.option([]const u8, "snapshot_path", "Path to v8 snapshot");
+    const curl_impersonate_path = b.option([]const u8, "curl_impersonate_path", "Path to prebuilt curl-impersonate directory (with lib/ and include/)");
 
     var opts = b.addOptions();
     opts.addOption([]const u8, "version", manifest.version);
@@ -66,7 +67,7 @@ pub fn build(b: *Build) !void {
         b.default_step.dependOn(fmt_step);
 
         try linkV8(b, mod, enable_asan, enable_tsan, prebuilt_v8_path);
-        try linkCurl(b, mod, enable_tsan);
+        try linkCurl(b, mod, enable_tsan, curl_impersonate_path);
         try linkHtml5Ever(b, mod);
 
         break :blk mod;
@@ -202,23 +203,54 @@ fn linkHtml5Ever(b: *Build, mod: *Build.Module) !void {
     mod.addObjectFile(obj);
 }
 
-fn linkCurl(b: *Build, mod: *Build.Module, is_tsan: bool) !void {
+fn linkCurl(b: *Build, mod: *Build.Module, is_tsan: bool, curl_impersonate_path: ?[]const u8) !void {
     const target = mod.resolved_target.?;
 
-    const curl = buildCurl(b, target, mod.optimize.?, is_tsan);
-    mod.linkLibrary(curl);
+    if (curl_impersonate_path) |ci_path| {
+        // Use prebuilt curl-impersonate libraries
+        const lib_path: Build.LazyPath = .{ .cwd_relative = b.fmt("{s}/lib", .{ci_path}) };
+        const include_path: Build.LazyPath = .{ .cwd_relative = b.fmt("{s}/include", .{ci_path}) };
 
-    const zlib = buildZlib(b, target, mod.optimize.?, is_tsan);
-    curl.root_module.linkLibrary(zlib);
+        mod.addObjectFile(lib_path.path(b, "libcurl-impersonate.a"));
+        mod.addObjectFile(lib_path.path(b, "libssl.a"));
+        mod.addObjectFile(lib_path.path(b, "libcrypto.a"));
+        mod.addObjectFile(lib_path.path(b, "libnghttp2.a"));
+        mod.addObjectFile(lib_path.path(b, "libbrotlicommon.a"));
+        mod.addObjectFile(lib_path.path(b, "libbrotlidec.a"));
+        mod.addObjectFile(lib_path.path(b, "libbrotlienc.a"));
+        mod.addObjectFile(lib_path.path(b, "libz.a"));
+        mod.addObjectFile(lib_path.path(b, "libzstd.a"));
 
-    const brotli = buildBrotli(b, target, mod.optimize.?, is_tsan);
-    for (brotli) |lib| curl.root_module.linkLibrary(lib);
+        mod.addIncludePath(include_path);
+        mod.addIncludePath(include_path.path(b, "curl"));
 
-    const nghttp2 = buildNghttp2(b, target, mod.optimize.?, is_tsan);
-    curl.root_module.linkLibrary(nghttp2);
+        mod.link_libcpp = true;
 
-    const boringssl = buildBoringSsl(b, target, mod.optimize.?);
-    for (boringssl) |lib| curl.root_module.linkLibrary(lib);
+        switch (target.result.os.tag) {
+            .macos => {
+                // Apple IDN support requires iconv and ICU
+                mod.linkSystemLibrary("iconv", .{});
+                mod.linkSystemLibrary("icucore", .{});
+            },
+            else => {},
+        }
+    } else {
+        // Build curl from source (original path)
+        const curl = buildCurl(b, target, mod.optimize.?, is_tsan);
+        mod.linkLibrary(curl);
+
+        const zlib = buildZlib(b, target, mod.optimize.?, is_tsan);
+        curl.root_module.linkLibrary(zlib);
+
+        const brotli = buildBrotli(b, target, mod.optimize.?, is_tsan);
+        for (brotli) |lib| curl.root_module.linkLibrary(lib);
+
+        const nghttp2 = buildNghttp2(b, target, mod.optimize.?, is_tsan);
+        curl.root_module.linkLibrary(nghttp2);
+
+        const boringssl = buildBoringSsl(b, target, mod.optimize.?);
+        for (boringssl) |lib| curl.root_module.linkLibrary(lib);
+    }
 
     switch (target.result.os.tag) {
         .macos => {

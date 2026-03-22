@@ -26,6 +26,10 @@ inputs:
     description: 'enable v8 pre-built debug version, only available for linux x86_64'
     required: false
     default: 'false'
+  curl-impersonate:
+    description: 'path to curl-impersonate source for building with browser fingerprint support'
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -36,7 +40,7 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget xz-utils ca-certificates clang make git
+        sudo apt-get install -y wget xz-utils ca-certificates clang make git cmake ninja-build autoconf automake libtool
 
     # Zig version used from the `minimum_zig_version` field in build.zig.zon
     - uses: mlugg/setup-zig@v2
@@ -65,3 +69,16 @@ runs:
       run: |
         mkdir -p v8
         ln -s ${{ inputs.cache-dir }}/v8/libc_v8.a v8/libc_v8${{inputs.debug == 'true' && '_debug' || '' }}.a
+
+    - name: Cache curl-impersonate
+      if: ${{ inputs.curl-impersonate != '' }}
+      id: cache-curl-impersonate
+      uses: actions/cache@v5
+      with:
+        path: .curl-impersonate
+        key: curl-impersonate-${{ inputs.os }}-${{ inputs.arch }}-v1
+
+    - name: Build curl-impersonate
+      if: ${{ inputs.curl-impersonate != '' && steps.cache-curl-impersonate.outputs.cache-hit != 'true' }}
+      shell: bash
+      run: ./scripts/build-curl-impersonate.sh ${{ inputs.curl-impersonate }}
