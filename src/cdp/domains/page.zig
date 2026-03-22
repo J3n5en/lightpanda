@@ -145,19 +145,23 @@ fn setLifecycleEventsEnabled(cmd: anytype) !void {
     return cmd.sendResult(null, .{});
 }
 
-// TODO: hard coded method
-// With the command we receive a script we need to store and run for each new document.
-// Note that the worldName refers to the name given to the isolated world.
 fn addScriptToEvaluateOnNewDocument(cmd: anytype) !void {
-    // const params = (try cmd.params(struct {
-    //     source: []const u8,
-    //     worldName: ?[]const u8 = null,
-    //     includeCommandLineAPI: bool = false,
-    //     runImmediately: bool = false,
-    // })) orelse return error.InvalidParams;
+    const params = (try cmd.params(struct {
+        source: []const u8,
+    })) orelse return error.InvalidParams;
+
+    const bc = cmd.browser_context orelse return error.BrowserContextNotLoaded;
+
+    const source = try bc.arena.dupe(u8, params.source);
+    const identifier = try std.fmt.allocPrint(bc.arena, "{d}", .{bc.preload_scripts.items.len + 1});
+
+    try bc.preload_scripts.append(bc.arena, .{
+        .source = source,
+        .identifier = identifier,
+    });
 
     return cmd.sendResult(.{
-        .identifier = "1",
+        .identifier = identifier,
     }, .{});
 }
 
@@ -321,6 +325,23 @@ pub fn pageCreated(bc: anytype, page: *Page) !void {
     for (bc.isolated_worlds.items) |isolated_world| {
         _ = try isolated_world.createContext(page);
     }
+
+    // Execute preload scripts before any page scripts run.
+    for (bc.preload_scripts.items) |script| {
+        var ls: js.Local.Scope = undefined;
+        page.js.localScope(&ls);
+        defer ls.deinit();
+
+        var try_catch: js.TryCatch = undefined;
+        try_catch.init(&ls.local);
+        defer try_catch.deinit();
+
+        _ = ls.local.eval(script.source, "preload") catch {
+            const caught = try_catch.caughtOrError(page.call_arena, error.Unknown);
+            log.warn(.js, "preload script error", .{ .caught = caught });
+        };
+    }
+
     // Only retain captured responses until a navigation event. In CDP term,
     // this is called a "renderer" and the cache-duration can be controlled via
     // the Network.configureDurableMessages message (which we don't support)

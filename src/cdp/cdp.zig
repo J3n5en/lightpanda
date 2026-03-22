@@ -360,6 +360,7 @@ pub fn BrowserContext(comptime CDP_T: type) type {
 
         inspector_session: *js.Inspector.Session,
         isolated_worlds: std.ArrayList(*IsolatedWorld),
+        preload_scripts: std.ArrayList(PreloadScript),
 
         http_proxy_changed: bool = false,
 
@@ -409,6 +410,7 @@ pub fn BrowserContext(comptime CDP_T: type) type {
                 .node_registry = registry,
                 .node_search_list = undefined,
                 .isolated_worlds = .empty,
+                .preload_scripts = .empty,
                 .inspector_session = inspector_session,
                 .page_arena = cdp.page_arena.allocator(),
                 .arena = cdp.browser_context_arena.allocator(),
@@ -736,6 +738,11 @@ pub fn BrowserContext(comptime CDP_T: type) type {
 /// in the isolated world by using its Context ID or the worldName.
 /// grantUniveralAccess Indecated whether the isolated world can reference objects like the DOM or other JS Objects.
 /// An isolated world has it's own instance of globals like Window.
+const PreloadScript = struct {
+    source: []const u8,
+    identifier: []const u8,
+};
+
 /// Generally the client needs to resolve a node into the isolated world to be able to work with it.
 /// An object id is unique across all contexts, different object ids can refer to the same Node in different contexts.
 const IsolatedWorld = struct {
