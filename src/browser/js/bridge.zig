@@ -883,6 +883,7 @@ pub const JsApis = flattenTypes(&.{
     @import("../webapi/NetworkInformation.zig"),
     @import("../webapi/SpeechSynthesis.zig"),
     @import("../webapi/Notification.zig"),
+    @import("../webapi/Chrome.zig"),
     @import("../webapi/MutationObserver.zig"),
     @import("../webapi/IntersectionObserver.zig"),
     @import("../webapi/CustomElementRegistry.zig"),

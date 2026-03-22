@@ -45,6 +45,7 @@ const CSSStyleProperties = @import("css/CSSStyleProperties.zig");
 const CustomElementRegistry = @import("CustomElementRegistry.zig");
 const Selection = @import("Selection.zig");
 const SpeechSynthesis = @import("SpeechSynthesis.zig");
+const Chrome = @import("Chrome.zig");
 
 const IS_DEBUG = builtin.mode == .Debug;
 
@@ -64,6 +65,7 @@ _visual_viewport: *VisualViewport,
 _performance: Performance,
 _storage_bucket: storage.Bucket = .{},
 _speech_synthesis: SpeechSynthesis = .{},
+_chrome: Chrome = .{},
 _on_load: ?js.Function.Global = null,
 _on_pageshow: ?js.Function.Global = null,
 _on_popstate: ?js.Function.Global = null,
@@ -163,6 +165,10 @@ pub fn getSessionStorage(self: *Window) *storage.Lookup {
 
 pub fn getSpeechSynthesis(self: *Window) *SpeechSynthesis {
     return &self._speech_synthesis;
+}
+
+pub fn getChrome(self: *Window) *Chrome {
+    return &self._chrome;
 }
 
 pub fn getLocation(self: *const Window) *Location {
@@ -874,6 +880,7 @@ pub const JsApi = struct {
     // This is safer and could help avoid processing errors by hinting at
     // sites not to try to access those features
     pub const speechSynthesis = bridge.accessor(Window.getSpeechSynthesis, null, .{});
+    pub const chrome = bridge.accessor(Window.getChrome, null, .{});
     pub const isSecureContext = bridge.property(false, .{ .template = false });
 
     pub const innerWidth = bridge.property(1920, .{ .template = false });
