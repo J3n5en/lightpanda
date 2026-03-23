@@ -817,9 +817,12 @@ fn processMessages(self: *Client) !bool {
     while (self.handles.readMessage()) |msg| {
         const transfer = try Transfer.fromConnection(&msg.conn);
 
-        // In case of auth challenge
+        // In case of auth challenge.
+        // Only trigger auth interception if a valid WWW-Authenticate or
+        // Proxy-Authenticate header was parsed (source != null). Some servers
+        // (e.g. Apple's shld PoW) use 407 for non-auth purposes.
         // TODO give a way to configure the number of auth retries.
-        if (transfer._auth_challenge != null and transfer._tries < 10) {
+        if (transfer._auth_challenge != null and transfer._auth_challenge.?.source != null and transfer._tries < 10) {
             var wait_for_interception = false;
             transfer.req.notification.dispatch(.http_request_auth_required, &.{ .transfer = transfer, .wait_for_interception = &wait_for_interception });
             if (wait_for_interception) {
@@ -1098,7 +1101,7 @@ pub const Transfer = struct {
 
         const url = try conn.getEffectiveUrl();
 
-        const status: u16 = if (self._auth_challenge != null)
+        const status: u16 = if (self._auth_challenge != null and self._auth_challenge.?.source != null)
             407
         else
             try conn.getResponseCode();
@@ -1429,8 +1432,13 @@ pub const Transfer = struct {
             return Net.writefunc_error;
         };
 
-        if (transfer._redirecting or transfer._auth_challenge != null) {
+        if (transfer._redirecting) {
             return @intCast(chunk_len);
+        }
+        // Only discard body for genuine auth challenges (with parsed source).
+        // Servers like Apple's shld use 407 for non-auth purposes (PoW challenges).
+        if (transfer._auth_challenge) |ac| {
+            if (ac.source != null) return @intCast(chunk_len);
         }
 
         if (!transfer._header_done_called) {
